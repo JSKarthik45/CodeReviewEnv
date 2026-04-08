@@ -1,0 +1,99 @@
+name: code-review-env
+version: "1.0.0"
+spec: openenv/v1
+tags:
+  - openenv
+  - code-review
+  - software-engineering
+  - security
+  - agent-evaluation
+
+description: >
+  A code review environment where AI agents act as senior engineers reviewing
+  pull requests. Tasks span bug hunting (easy), security auditing (medium),
+  and distributed systems correctness review (hard). Fully OpenEnv-compliant
+  with typed Pydantic models, dense reward signals, and programmatic graders.
+
+author: "Meta Hackathon Submission"
+license: MIT
+
+observation_space:
+  type: object
+  description: >
+    Structured pull request context including code files, linter output,
+    test results, and history of previous actions taken in the episode.
+  fields:
+    - task_id: string
+    - step: integer
+    - max_steps: integer
+    - review_context: ReviewContext
+    - previous_actions: list[ReviewAction]
+    - issues_found_so_far: list[dict]
+    - score_so_far: float [0.0, 1.0]
+    - done: boolean
+
+action_space:
+  type: object
+  description: >
+    Agents may review (annotate an issue), patch (submit corrected code),
+    comment (free-form annotation), or submit (final verdict).
+  action_types:
+    - review: annotate a specific issue with severity, type, line, and description
+    - patch: provide full corrected code
+    - comment: free-form annotation
+    - submit: final verdict (approve | request_changes | reject) with confidence
+
+reward:
+  type: dense
+  range: [-1.0, 1.0]
+  description: >
+    Intermediate reward encourages efficient, non-repetitive, actionable reviews.
+    Final reward (at submit or max_steps) is the programmatic grader score in [0.0, 1.0].
+  components:
+    step_penalty: -0.01 per step (encourages efficiency)
+    review_description_bonus: +0.05 for substantive review action
+    critical_severity_bonus: +0.03 for marking an issue as critical
+    patch_submitted_bonus: +0.10 for submitting non-trivial patch
+    repetition_penalty: -0.05 for repeating identical descriptions
+
+tasks:
+  - id: task_1_easy_bug_hunt
+    difficulty: easy
+    max_steps: 8
+    description: >
+      Find three planted bugs in a Python utility module:
+      assignment-instead-of-comparison, off-by-one loop bound, missing return.
+    grader: keyword-match + AST parse of patch
+    max_score: 1.0
+
+  - id: task_2_medium_security
+    difficulty: medium
+    max_steps: 12
+    description: >
+      Audit a Flask authentication endpoint for six security vulnerabilities:
+      SQL injection (×2), plaintext passwords, no rate limiting,
+      sensitive data leakage, hardcoded secret key.
+    grader: keyword-match across action descriptions + patch structural check
+    max_score: 1.0
+
+  - id: task_3_hard_perf_correctness
+    difficulty: hard
+    max_steps: 16
+    description: >
+      Review a distributed LRU cache backed by Redis for six issues:
+      race condition, memory leak, N+1 query, wrong LRU order,
+      thread-safety violation, pickle deserialization exploit.
+    grader: keyword-match + patch structural check (Lock, OrderedDict, mget, json)
+    max_score: 1.0
+
+baseline_scores:
+  model: Qwen/Qwen2.5-72B-Instruct
+  task_1_easy_bug_hunt: 0.72
+  task_2_medium_security: 0.55
+  task_3_hard_perf_correctness: 0.38
+  aggregate: 0.55
+
+deployment:
+  platform: huggingface_spaces
+  sdk: docker
+  port: 7860
