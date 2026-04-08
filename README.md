@@ -1,3 +1,15 @@
+---
+title: CodeReviewEnv
+emoji: 🔍
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+pinned: false
+---
+
+# Code Review Environment
+My custom environment for code review tasks.
+
 # 🔍 CodeReviewEnv
 
 > An OpenEnv-compliant benchmark environment where AI agents act as senior engineers reviewing pull requests — catching bugs, finding security holes, and fixing broken code.
